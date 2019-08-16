@@ -23,7 +23,7 @@ import (
 	"github.com/dgraph-io/badger/y"
 )
 
-type db struct {
+type Db struct {
 	opts                Options
 	writeChan           chan *request
 	l0handler           *levelHandler
@@ -46,8 +46,8 @@ type request struct {
 	wg    sync.WaitGroup
 }
 
-func New(opts Options) (*db, error) {
-	absPath, err := filepath.Abs(opts.path)
+func New(opts Options) (*Db, error) {
+	absPath, err := filepath.Abs(opts.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func New(opts Options) (*db, error) {
 		t := newTable(absPath, l1file.Idx)
 		l1handler.addTable(t, l1file.Idx)
 	}
-	db := &db{
+	db := &Db{
 		opts:                opts,
 		writeChan:           make(chan *request, 1000),
 		absPath:             absPath,
@@ -87,7 +87,7 @@ func New(opts Options) (*db, error) {
 	return db, nil
 }
 
-func (d *db) Close() {
+func (d *Db) Close() {
 
 	d.loadBalancingCloser.SignalAndWait()
 	d.compactionCloser.SignalAndWait()
@@ -102,7 +102,7 @@ func (d *db) Close() {
 	}
 }
 
-func (d *db) Set(key, val []byte) {
+func (d *Db) Set(key, val []byte) {
 	r := request{
 		key:   key,
 		value: val,
@@ -111,7 +111,7 @@ func (d *db) Set(key, val []byte) {
 	d.writeChan <- &r
 	r.wg.Wait()
 }
-func (d *db) acceptWrite(closer *y.Closer) {
+func (d *Db) acceptWrite(closer *y.Closer) {
 
 loop:
 	for {
@@ -132,7 +132,7 @@ loop:
 	closer.Done()
 }
 
-func (d *db) write(req *request) {
+func (d *Db) write(req *request) {
 
 	if !d.mtable.isEnoughSpace(len(req.key) + len(req.value)) {
 		d.Lock()
@@ -146,7 +146,7 @@ func (d *db) write(req *request) {
 
 }
 
-func (d *db) listenForFlushing(closer *y.Closer) {
+func (d *Db) listenForFlushing(closer *y.Closer) {
 	// original paper don't have this immutable table. btw I'm borrowing
 	// it from wisckey's and badger implementation for async flushing to disk
 	// instead of stalling at write.
@@ -166,7 +166,7 @@ loop:
 	closer.Done()
 }
 
-func (d *db) flushMem(imtable *hashMap) {
+func (d *Db) flushMem(imtable *hashMap) {
 	nxtID := d.manifest.nextFileID()
 	imtable.toDisk(d.absPath, nxtID)
 	d.manifest.addl0file(imtable.records, imtable.minRange, imtable.maxRange, imtable.occupiedSpace(), nxtID)
@@ -177,7 +177,7 @@ func (d *db) flushMem(imtable *hashMap) {
 	d.Unlock()
 }
 
-func (d *db) mergeTable(t1, t2 *table) {
+func (d *Db) mergeTable(t1, t2 *table) {
 	t1.SeekBegin()
 	t2.SeekBegin()
 	builder := newTableMergeBuilder(int(t1.size + t2.size))
@@ -189,7 +189,7 @@ func (d *db) mergeTable(t1, t2 *table) {
 	d.saveL1Table(buf)
 }
 
-func (d *db) saveL1Table(buf []byte) {
+func (d *Db) saveL1Table(buf []byte) {
 	FID := d.manifest.nextFileID()
 	fp, err := os.Create(giveTablePath(d.absPath, FID))
 	if err != nil {
@@ -211,7 +211,7 @@ func (d *db) saveL1Table(buf []byte) {
 	logrus.Infof("comapction: new l1 file has beed added %d", FID)
 }
 
-func (d *db) L0Compaction() {
+func (d *Db) L0Compaction() {
 	// sorting according to the denisty
 	d.manifest.sortL0()
 	// create two victim table
@@ -231,7 +231,7 @@ func (d *db) L0Compaction() {
 	logrus.Infof("comapction: l0 file has beed deleted %d", t2.ID())
 }
 
-func (d *db) runCompaction(closer *y.Closer) {
+func (d *Db) runCompaction(closer *y.Closer) {
 	// ticker := time.NewTicker(time.Second)
 	// defer ticker.Stop()
 
@@ -272,7 +272,7 @@ loop:
 	closer.Done()
 }
 
-func (d *db) loadBalancing(closer *y.Closer) {
+func (d *Db) loadBalancing(closer *y.Closer) {
 	// ticker := time.NewTicker(time.Second)
 	// defer ticker.Stop()
 loop:
@@ -307,7 +307,7 @@ loop:
 					d.saveL1Table(builders[1].finish())
 					d.l1handler.deleteTable(l1f.Idx)
 					d.manifest.deleteL1Table(l1f.Idx)
-					logrus.Infof("load balancing: l1 file %d is splitted into two l1 files properly",l1f.Idx)
+					logrus.Infof("load balancing: l1 file %d is splitted into two l1 files properly", l1f.Idx)
 				}
 			}
 		}
@@ -315,7 +315,7 @@ loop:
 	closer.Done()
 }
 
-func (d *db) Get(key []byte) ([]byte, bool) {
+func (d *Db) Get(key []byte) ([]byte, bool) {
 	val, exist := d.mtable.Get(key)
 	if exist {
 		return val, exist

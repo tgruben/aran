@@ -15,7 +15,7 @@ package aran
 type Options struct {
 	NoOfL0Files  int
 	memtablesize int
-	path         string
+	Path         string
 	maxL1Size    int
 }
 

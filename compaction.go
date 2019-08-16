@@ -18,7 +18,7 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
-func (d *db) handleNotUnion(p compactionPolicy, l0f tableManifest) {
+func (d *Db) handleNotUnion(p compactionPolicy, l0f tableManifest) {
 	// normal push down
 	newt := newTable(d.absPath, l0f.Idx)
 	d.l1handler.addTable(newt, l0f.Idx)
@@ -28,7 +28,7 @@ func (d *db) handleNotUnion(p compactionPolicy, l0f tableManifest) {
 	logrus.Info("compaction: NOT UNION found so simply pushing the l0 file to l1")
 }
 
-func (d *db) handleUnion(p compactionPolicy, l0f tableManifest) {
+func (d *Db) handleUnion(p compactionPolicy, l0f tableManifest) {
 	t1, t2 := newTable(d.absPath, l0f.Idx), newTable(d.absPath, p.tableIDS[0])
 	d.mergeTable(t1, t2)
 	logrus.Infof("compaction: UNION SET found so merged l0 %d with l1 %d, pushed to l1", t1.ID(), t2.ID())
@@ -44,7 +44,7 @@ func (d *db) handleUnion(p compactionPolicy, l0f tableManifest) {
 	logrus.Infof("compaction: l1 file has been deleted %d", t2.ID())
 }
 
-func (d *db) handleOverlapping(p compactionPolicy, l0f tableManifest) {
+func (d *Db) handleOverlapping(p compactionPolicy, l0f tableManifest) {
 	logrus.Infof("compaction: OVERLAPPING found")
 	builders := []*mergeTableBuilder{}
 	// if the the value is not in the range, we'll create a new file and append everything

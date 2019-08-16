@@ -17,8 +17,8 @@ import (
 	"testing"
 )
 
-func testDB() *db {
-	return &db{
+func testDB() *Db {
+	return &Db{
 		manifest:  &manifest{L0Files: make([]tableManifest, 0), L1Files: make([]tableManifest, 0), NextIDX: 5},
 		l0handler: newLevelHanlder(),
 		l1handler: newLevelHanlder(),
